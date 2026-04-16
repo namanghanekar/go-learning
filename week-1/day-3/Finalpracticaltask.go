@@ -24,7 +24,6 @@ func displayAll(students map[string]int) {
 }
 
 func main() {
-
 	// student data (map)
 	students := map[string]int{
 		"Naman":     90,

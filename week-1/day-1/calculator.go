@@ -10,7 +10,7 @@ func main() {
 
 	fmt.Print("Enter calculation : ")
 
-	fmt.Scan(&a, &op, &b)// taking input from user
+	fmt.Scan(&a, &op, &b) // taking input from user
 
 	switch op {
 	case "+":
