@@ -1,0 +1,18 @@
+{
+  "1": {
+    "name": "mobile",
+    "price": 20000,
+    "quantity": 5
+  },
+
+  "2": {
+    "name": "Watch",
+    "price": 7000,
+    "quantity": 2
+  },
+  "3": {
+    "name": "laptop",
+    "price": 200000,
+    "quantity": 1
+  }
+}
