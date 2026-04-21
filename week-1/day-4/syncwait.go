@@ -11,6 +11,7 @@ func task(wg *sync.WaitGroup, id int) {
 }
 func main() {
 	var wg sync.WaitGroup
+	wg.Add(1)
 	for i := 1; i <= 3; i++ {
 		wg.Add(1)
 		go task(&wg, i)
