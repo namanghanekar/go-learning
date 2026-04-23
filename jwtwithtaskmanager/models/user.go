@@ -1,7 +1,8 @@
 package models
 
 type User struct {
-	ID       uint
-	Username string
-	Password string
+	ID         uint   `gorm:"primaryKey"`
+	Username   string `gorm:"unique"`
+	Password   string `json:"-"`
+	IsVerified bool
 }

@@ -10,7 +10,6 @@ import (
 var DB *gorm.DB
 
 func InitDB() {
-
 	dsn := "root:naman@tcp(127.0.0.1:3306)/taskdb?parseTime=true"
 
 	var err error
@@ -18,6 +17,4 @@ func InitDB() {
 	if err != nil {
 		log.Fatal("DB connection failed:", err)
 	}
-
-	log.Println("✅ DB Connected")
 }

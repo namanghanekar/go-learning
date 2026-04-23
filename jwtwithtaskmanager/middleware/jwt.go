@@ -12,8 +12,7 @@ var secretKey = []byte("mysecretkey")
 func JWTMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 
-		auth := c.GetHeader("Authorization") // Check if token is present
-
+		auth := c.GetHeader("Authorization")
 		if auth == "" {
 			c.JSON(401, gin.H{"error": "Missing token"})
 			c.Abort()
@@ -21,12 +20,6 @@ func JWTMiddleware() gin.HandlerFunc {
 		}
 
 		parts := strings.Split(auth, " ")
-		if len(parts) != 2 {
-			c.JSON(401, gin.H{"error": "Invalid format"})
-			c.Abort()
-			return
-		}
-
 		token, err := jwt.Parse(parts[1], func(t *jwt.Token) (interface{}, error) {
 			return secretKey, nil
 		})
@@ -38,7 +31,7 @@ func JWTMiddleware() gin.HandlerFunc {
 		}
 
 		claims := token.Claims.(jwt.MapClaims)
-		c.Set("user_id", claims["user_id"])
+		c.Set("user_id", uint(claims["user_id"].(float64)))
 
 		c.Next()
 	}

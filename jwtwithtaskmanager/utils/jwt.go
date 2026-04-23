@@ -13,5 +13,6 @@ func GenerateJWT(userID uint) (string, error) {
 		"user_id": userID,
 		"exp":     time.Now().Add(time.Hour * 1).Unix(),
 	})
+
 	return token.SignedString(secretKey)
 }
