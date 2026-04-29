@@ -2,10 +2,12 @@ package grpcserver
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"sync"
 	"ticket-system/inventory-service/service"
 	pb "ticket-system/proto"
+	"ticket-system/shared/logger"
 	"time"
 )
 
@@ -57,7 +59,7 @@ func (s *Server) LockSeat(ctx context.Context, req *pb.LockRequest) (*pb.SeatRes
 		return &pb.SeatResponse{Status: "error"}, err
 	}
 
-	log.Println("seat locked:", req.SeatId)
+	logger.Log(fmt.Sprintf("seat locked: %d by %s", req.SeatId, req.UserId))
 
 	broadcast(&pb.Seat{
 		Id:     req.SeatId,
@@ -76,7 +78,7 @@ func (s *Server) UnlockSeat(ctx context.Context, req *pb.SeatRequest) (*pb.SeatR
 		Id:     req.SeatId,
 		Status: "available",
 	}
-	log.Println("seat unlocked:", req.SeatId)
+	logger.Log(fmt.Sprintf("seat unlocked: %d", req.SeatId))
 	broadcast(seat)
 
 	return &pb.SeatResponse{Status: "available"}, nil
@@ -91,6 +93,7 @@ func (s *Server) ConfirmSeat(ctx context.Context, req *pb.SeatConfirmRequest) (*
 		Status: "booked",
 		UserId: req.UserId,
 	})
+	logger.Log(fmt.Sprintf("seat booked: %d by %s", req.SeatId, req.UserId))
 
 	return &pb.SeatResponse{Status: "booked"}, nil
 }

@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/rs/cors"
@@ -60,6 +61,7 @@ func main() {
 
 	http.Handle("/", playground.Handler("GraphQL playground", "/query"))
 	http.Handle("/query", srv)
+	http.Handle("/web/", http.StripPrefix("/web/", http.FileServer(http.Dir(findWebDir()))))
 
 	c := cors.New(cors.Options{
 		AllowedOrigins: []string{"*"},
@@ -71,6 +73,21 @@ func main() {
 
 	log.Printf("graphql service running on http://localhost:%s/", port)
 	log.Fatal(http.ListenAndServe(":"+port, handler))
+}
+
+func findWebDir() string {
+	candidates := []string{
+		filepath.Join("..", "web"),
+		"web",
+	}
+
+	for _, candidate := range candidates {
+		if info, err := os.Stat(candidate); err == nil && info.IsDir() {
+			return candidate
+		}
+	}
+
+	return filepath.Join("..", "web")
 }
 
 func startSeatSubscriptionBridge(cl *client.Client, resolver *graph.Resolver) {

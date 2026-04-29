@@ -8,8 +8,10 @@ package graph
 import (
 	"context"
 	"graphql-service/graph/model"
+	"ticket-system/shared/logger"
 )
 
+// LockSeat is the resolver for the lockSeat field.
 func (r *mutationResolver) LockSeat(ctx context.Context, seatID int32, userID string) (*string, error) {
 	if err := r.Client.Lock(int(seatID), userID); err != nil {
 		return nil, err
@@ -19,6 +21,7 @@ func (r *mutationResolver) LockSeat(ctx context.Context, seatID int32, userID st
 	return &msg, nil
 }
 
+// ConfirmSeat is the resolver for the confirmSeat field.
 func (r *mutationResolver) ConfirmSeat(ctx context.Context, seatID int32, userID string) (*string, error) {
 	if err := r.Client.Pay(int(seatID), userID); err != nil {
 		return nil, err
@@ -28,6 +31,7 @@ func (r *mutationResolver) ConfirmSeat(ctx context.Context, seatID int32, userID
 	return &msg, nil
 }
 
+// Seats is the resolver for the seats field.
 func (r *queryResolver) Seats(ctx context.Context) ([]*model.Seat, error) {
 	res, err := r.Client.GetSeats()
 	if err != nil {
@@ -51,6 +55,11 @@ func (r *queryResolver) Seats(ctx context.Context) ([]*model.Seat, error) {
 	}
 
 	return seats, nil
+}
+
+// Logs is the resolver for the logs field.
+func (r *queryResolver) Logs(ctx context.Context) ([]string, error) {
+	return logger.GetLogs(), nil
 }
 
 // SeatUpdates is the resolver for the seatUpdates field.

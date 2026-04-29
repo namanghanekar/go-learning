@@ -6,6 +6,7 @@ type Seat {
 
 type Query {
   seats: [Seat!]!
+  logs: [String!]!
 }
 
 type Mutation {

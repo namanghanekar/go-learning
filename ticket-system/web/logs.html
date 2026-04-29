@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Ticket System Logs</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: "Segoe UI", Arial, sans-serif;
+      background: #0b1120;
+      color: #e5e7eb;
+      min-height: 100vh;
+    }
+    .wrap {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 28px 16px;
+    }
+    .bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 14px;
+    }
+    h1 {
+      font-size: 24px;
+      margin: 0;
+    }
+    a, button {
+      border: 1px solid #334155;
+      border-radius: 8px;
+      background: #1d4ed8;
+      color: #fff;
+      padding: 8px 12px;
+      text-decoration: none;
+      cursor: pointer;
+      font-size: 14px;
+    }
+    .status {
+      color: #93c5fd;
+      min-height: 22px;
+      margin-bottom: 12px;
+    }
+    .panel {
+      background: #020617;
+      border: 1px solid #1f2937;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    .log-line {
+      margin: 0;
+      padding: 8px 12px;
+      border-bottom: 1px solid #111827;
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+      font-family: Consolas, "Courier New", monospace;
+      font-size: 13px;
+      line-height: 1.45;
+    }
+    .log-line:last-child {
+      border-bottom: 0;
+    }
+    .empty {
+      color: #94a3b8;
+      padding: 18px 12px;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="bar">
+      <h1>Ticket System Logs</h1>
+      <div>
+        <a href="index.html">Seat Map</a>
+        <button onclick="loadLogs()">Refresh</button>
+      </div>
+    </div>
+    <div id="status" class="status"></div>
+    <div id="logs" class="panel"></div>
+  </div>
+
+  <script>
+    const API = "http://localhost:8080/query";
+
+    function setStatus(message) {
+      document.getElementById("status").innerText = message;
+    }
+
+    async function loadLogs() {
+      try {
+        const res = await fetch(API, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ query: "query { logs }" })
+        });
+
+        const data = await res.json();
+        if (data.errors && data.errors.length) {
+          setStatus("Query error: " + data.errors[0].message);
+          return;
+        }
+
+        const logs = (data.data && data.data.logs) || [];
+        const div = document.getElementById("logs");
+        div.innerHTML = "";
+
+        if (!logs.length) {
+          const empty = document.createElement("div");
+          empty.className = "empty";
+          empty.innerText = "No logs yet. Lock or book a seat to create events.";
+          div.appendChild(empty);
+        } else {
+          logs.slice().reverse().forEach((line) => {
+            const p = document.createElement("p");
+            p.className = "log-line";
+            p.innerText = line;
+            div.appendChild(p);
+          });
+        }
+
+        setStatus("Auto refreshing every second");
+      } catch (err) {
+        setStatus("Load failed: " + err.message);
+      }
+    }
+
+    setInterval(loadLogs, 1000);
+    loadLogs();
+  </script>
+</body>
+</html>

@@ -1,0 +1,21 @@
+[19:09:34] seat locked: 31 by codex-test
+[19:09:34] payment timer started for seat: 31
+[19:12:05] seat locked: 32 by user1
+[19:12:05] payment timer started for seat: 32
+[19:12:07] processing payment for seat: 32 by user1
+[19:12:07] payment confirmed for seat: 32 by user1
+[19:12:07] seat booked: 32 by user1
+[19:12:40] seat locked: 34 by user1
+[19:12:40] payment timer started for seat: 34
+[19:12:55] processing payment for seat: 34 by user1
+[19:12:55] payment confirmed for seat: 34 by user1
+[19:12:57] seat booked: 34 by user1
+[19:14:33] seat locked: 33 by user1
+[19:14:35] payment timer started for seat: 33
+[19:14:35] payment timer expired for seat: 31
+[19:14:37] seat unlocked: 31
+[19:15:06] seat locked: 31 by user1
+[19:15:06] payment timer started for seat: 31
+[19:15:15] processing payment for seat: 31 by user1
+[19:15:15] payment confirmed for seat: 31 by user1
+[19:15:15] seat booked: 31 by user1

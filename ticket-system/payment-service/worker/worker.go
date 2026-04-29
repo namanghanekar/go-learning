@@ -1,6 +1,10 @@
 package worker
 
-import "log"
+import (
+	"fmt"
+
+	"ticket-system/shared/logger"
+)
 
 type PaymentRequest struct {
 	SeatID int
@@ -14,7 +18,7 @@ func StartWorker(workerCount int, process func(PaymentRequest)) {
 	for i := 0; i < workerCount; i++ {
 		go func() {
 			for req := range PaymentQueue {
-				log.Println("processing payment for seat:", req.SeatID)
+				logger.Log(fmt.Sprintf("processing payment for seat: %d by %s", req.SeatID, req.UserID))
 				process(req)
 			}
 		}()
