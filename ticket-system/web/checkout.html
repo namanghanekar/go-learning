@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Checkout Seat</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: "Segoe UI", Arial, sans-serif;
+      background: radial-gradient(circle at top, #13203d, #070d1a 70%);
+      color: #f8fafc;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .card {
+      width: 100%;
+      max-width: 520px;
+      background: rgba(10, 18, 35, 0.92);
+      border: 1px solid rgba(148, 163, 184, 0.24);
+      border-radius: 16px;
+      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+      padding: 24px;
+      text-align: center;
+    }
+    h1 { margin-top: 0; margin-bottom: 8px; }
+    .meta { color: #cbd5e1; margin-bottom: 16px; }
+    .timer {
+      font-size: 44px;
+      font-weight: 700;
+      margin: 16px 0;
+      letter-spacing: 2px;
+      color: #fbbf24;
+    }
+    .warn { color: #fca5a5; }
+    .seatbox {
+      background: rgba(15, 23, 42, 0.85);
+      border: 1px solid rgba(148, 163, 184, 0.2);
+      border-radius: 10px;
+      padding: 12px;
+      margin-bottom: 16px;
+    }
+    button {
+      border: 0;
+      border-radius: 10px;
+      padding: 12px 16px;
+      font-weight: 600;
+      cursor: pointer;
+      font-size: 14px;
+      margin: 6px;
+    }
+    .pay {
+      background: #16a34a;
+      color: #fff;
+    }
+    .pay:hover { background: #15803d; }
+    .cancel {
+      background: #334155;
+      color: #fff;
+    }
+    .status {
+      min-height: 22px;
+      margin-top: 10px;
+      color: #93c5fd;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>Complete Payment</h1>
+    <div class="meta">Seat is reserved for 5 minutes only</div>
+
+    <div class="seatbox">
+      <div><strong>Seat:</strong> <span id="seatId"></span></div>
+      <div><strong>User:</strong> <span id="userId"></span></div>
+    </div>
+
+    <div id="timer" class="timer">05:00</div>
+    <div id="timerHint" class="meta">If timer ends, seat will be released automatically.</div>
+
+    <button class="pay" onclick="payNow()">Pay & Book Seat</button>
+    <button class="cancel" onclick="goHome('Payment cancelled. Seat remains locked until timer ends.')">Back to Seat Map</button>
+
+    <div id="status" class="status"></div>
+  </div>
+
+  <script>
+    const API = "http://localhost:8080/query";
+    const HOLD_MS = 5 * 60 * 1000;
+    const params = new URLSearchParams(window.location.search);
+    const seatId = Number(params.get("seatId"));
+    const userId = params.get("userId") || "user1";
+    const startedAt = Number(params.get("startedAt")) || Date.now();
+    let timerInterval;
+
+    function setStatus(msg) {
+      document.getElementById("status").innerText = msg;
+    }
+
+    function goHome(msg) {
+      window.location.href = `index.html?msg=${encodeURIComponent(msg)}`;
+    }
+
+    async function graphql(query) {
+      const res = await fetch(API, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ query })
+      });
+      const data = await res.json();
+      if (data.errors && data.errors.length) {
+        throw new Error(data.errors[0].message);
+      }
+      return data.data;
+    }
+
+    async function verifySeatStillLocked() {
+      const data = await graphql(`
+        query {
+          seats {
+            id
+            status
+            userId
+          }
+        }
+      `);
+      const seat = data.seats.find(s => s.id === seatId);
+      if (!seat) {
+        goHome("Seat not found.");
+        return false;
+      }
+      if (seat.status !== "locked" || seat.userId !== userId) {
+        goHome("Seat lock expired or taken by another user.");
+        return false;
+      }
+      return true;
+    }
+
+    function startCountdown() {
+      const timerEl = document.getElementById("timer");
+      const hintEl = document.getElementById("timerHint");
+
+      const tick = async () => {
+        const left = Math.max(0, HOLD_MS - (Date.now() - startedAt));
+        const min = Math.floor(left / 60000);
+        const sec = Math.floor((left % 60000) / 1000);
+        timerEl.innerText = `${String(min).padStart(2, "0")}:${String(sec).padStart(2, "0")}`;
+
+        if (left <= 60000) {
+          hintEl.classList.add("warn");
+          hintEl.innerText = "Hurry up! Less than 1 minute left.";
+        }
+
+        if (left <= 0) {
+          clearInterval(timerInterval);
+          const ok = await verifySeatStillLocked();
+          if (!ok) return;
+          goHome("5 minute timer finished. Seat is now available for everyone.");
+        }
+      };
+
+      tick();
+      timerInterval = setInterval(tick, 1000);
+    }
+
+    async function payNow() {
+      try {
+        setStatus("Processing payment...");
+        const ok = await verifySeatStillLocked();
+        if (!ok) return;
+
+        await graphql(`
+          mutation {
+            confirmSeat(seatId: ${seatId}, userId: "${userId}")
+          }
+        `);
+        goHome(`Payment successful. Seat ${seatId} booked.`);
+      } catch (err) {
+        setStatus("Payment failed: " + err.message);
+      }
+    }
+
+    async function init() {
+      if (!seatId || !userId) {
+        goHome("Missing checkout details.");
+        return;
+      }
+
+      document.getElementById("seatId").innerText = seatId;
+      document.getElementById("userId").innerText = userId;
+
+      const ok = await verifySeatStillLocked();
+      if (!ok) return;
+      startCountdown();
+    }
+
+    init();
+  </script>
+</body>
+</html>

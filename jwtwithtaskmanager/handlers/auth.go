@@ -12,44 +12,36 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-// REGISTER → send OTP + store HASHED password
 func RegisterHandler(c *gin.Context) {
 
 	var input struct {
 		Username string `json:"username"`
 		Password string `json:"password"`
 	}
-
 	if err := c.ShouldBindJSON(&input); err != nil {
 		c.JSON(400, gin.H{"error": "Invalid input"})
 		return
 	}
 
-	// 🔥 Trim input (IMPORTANT)
 	input.Username = strings.TrimSpace(input.Username)
 	input.Password = strings.TrimSpace(input.Password)
 
-	// 🔥 Hash password BEFORE storing
 	hash, err := bcrypt.GenerateFromPassword([]byte(input.Password), bcrypt.DefaultCost)
 	if err != nil {
 		c.JSON(500, gin.H{"error": "Failed to hash password"})
 		return
 	}
 
-	// generate OTP
 	otp := utils.GenerateOTP()
 
-	// store OTP + HASH in Redis
 	utils.RDB.Set(utils.Ctx, input.Username+":otp", otp, time.Minute*5)
 	utils.RDB.Set(utils.Ctx, input.Username+":pass", string(hash), time.Minute*5)
 
-	// send OTP
 	utils.SendOTPEmail(input.Username, otp)
 
 	c.JSON(200, gin.H{"message": "OTP sent to email"})
 }
 
-// VERIFY OTP → create user
 func VerifyOTP(c *gin.Context) {
 
 	var input struct {
@@ -117,7 +109,6 @@ func LoginHandler(c *gin.Context) {
 		return
 	}
 
-	// 🔥 Trim input (CRITICAL)
 	input.Username = strings.TrimSpace(input.Username)
 	input.Password = strings.TrimSpace(input.Password)
 

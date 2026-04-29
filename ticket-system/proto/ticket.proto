@@ -1,0 +1,53 @@
+syntax = "proto3";
+
+package ticket;
+
+option go_package = "ticket-system/proto";
+
+service InventoryService {
+  rpc GetSeats(Empty) returns (SeatList);
+  rpc LockSeat(LockRequest) returns (SeatResponse);
+  rpc UnlockSeat(SeatRequest) returns (SeatResponse);
+  rpc ConfirmSeat(SeatConfirmRequest) returns (SeatResponse);
+  rpc SeatUpdates(Empty) returns (stream Seat);
+}
+
+service PaymentService {
+  rpc Pay(PaymentRequest) returns (SeatResponse);
+  rpc StartTimer(SeatRequest) returns (SeatResponse);
+}
+
+message Empty {}
+
+message Seat {
+  int32 id = 1;
+  string status = 2;
+  string user_id = 3;
+}
+
+message SeatList {
+  repeated Seat seats = 1;
+}
+
+message LockRequest {
+  int32 seat_id = 1;
+  string user_id = 2;
+}
+
+message SeatRequest {
+  int32 seat_id = 1;
+}
+
+message SeatConfirmRequest {
+  int32 seat_id = 1;
+  string user_id = 2;
+}
+
+message PaymentRequest {
+  int32 seat_id = 1;
+  string user_id = 2;
+}
+
+message SeatResponse {
+  string status = 1;
+}

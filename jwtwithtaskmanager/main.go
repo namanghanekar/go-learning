@@ -11,23 +11,18 @@ import (
 )
 
 func main() {
-
 	db.InitDB()
 	utils.InitRedis()
 	db.DB.AutoMigrate(&models.User{}, &models.Task{})
 	r := gin.Default()
-	// Public
 	r.POST("/register", handlers.RegisterHandler)
 	r.POST("/verify-otp", handlers.VerifyOTP)
 	r.POST("/login", handlers.LoginHandler)
-
-	// Protected
 	protected := r.Group("/")
 	protected.Use(middleware.JWTMiddleware())
 	{
 		protected.POST("/task", handlers.CreateTask)
 		protected.GET("/tasks", handlers.GetTasks)
 	}
-
 	r.Run(":8080")
 }

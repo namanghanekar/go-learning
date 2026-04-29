@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>World Tour Tickets</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <div class="page-shell">
+    <header class="hero">
+      <div class="hero-copy">
+        <p class="eyebrow">Live Ticket Demo</p>
+        <h1>World Tour seat booking with live holds.</h1>
+        <p class="hero-text">
+          Pick a seat, hold it for five minutes, and finish payment before the timer ends.
+          Open this page in two tabs if you want to see seat updates happen live.
+        </p>
+      </div>
+      <div class="hero-card">
+        <label class="field">
+          <span>Your user id</span>
+          <input id="user-id" type="text" maxlength="40" placeholder="user-1">
+        </label>
+        <button id="refresh-btn" class="secondary-btn" type="button">Refresh seats</button>
+        <p id="connection-status" class="connection-pill">Connecting live updates...</p>
+      </div>
+    </header>
+
+    <main class="layout">
+      <section class="seat-section">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">Seat Map</p>
+            <h2>Main stage inventory</h2>
+          </div>
+          <div class="legend">
+            <span><i class="dot available"></i>Available</span>
+            <span><i class="dot held"></i>Held</span>
+            <span><i class="dot sold"></i>Sold</span>
+          </div>
+        </div>
+        <div id="seat-grid" class="seat-grid"></div>
+      </section>
+
+      <aside class="side-panel">
+        <div class="panel-card">
+          <p class="eyebrow">Selection</p>
+          <h3 id="selected-seat-label">Pick a seat</h3>
+          <p id="selected-seat-meta" class="muted">Choose any available seat to create a 5-minute lock.</p>
+          <div class="timer-box">
+            <span>Lock timer</span>
+            <strong id="countdown">--:--</strong>
+          </div>
+          <div class="action-stack">
+            <button id="hold-btn" class="primary-btn" type="button" disabled>Hold selected seat</button>
+            <button id="pay-btn" class="accent-btn" type="button" disabled>Pay now</button>
+          </div>
+          <div class="details-box">
+            <p><span>User:</span><strong id="details-user">-</strong></p>
+            <p><span>Seat id:</span><strong id="details-seat-id">-</strong></p>
+            <p><span>Hold token:</span><strong id="details-token">-</strong></p>
+          </div>
+        </div>
+
+        <div class="panel-card">
+          <p class="eyebrow">Live Feed</p>
+          <h3>Seat activity</h3>
+          <ul id="event-log" class="event-log"></ul>
+        </div>
+      </aside>
+    </main>
+  </div>
+
+  <template id="seat-template">
+    <button class="seat-card" type="button">
+      <span class="seat-number"></span>
+      <span class="seat-status"></span>
+    </button>
+  </template>
+
+  <script src="/app.js"></script>
+</body>
+</html>

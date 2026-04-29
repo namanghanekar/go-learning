@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>World Tour Tickets</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: "Segoe UI", Arial, sans-serif;
+      background: linear-gradient(180deg, #081022 0%, #121f3a 100%);
+      color: #f8fafc;
+      min-height: 100vh;
+    }
+    .container {
+      max-width: 980px;
+      margin: 0 auto;
+      padding: 28px 16px 40px;
+    }
+    .card {
+      background: rgba(10, 18, 35, 0.9);
+      border: 1px solid rgba(148, 163, 184, 0.24);
+      border-radius: 14px;
+      padding: 18px;
+      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.35);
+    }
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+    }
+    h1 {
+      margin: 0;
+      font-size: 24px;
+    }
+    .controls {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    input, button {
+      border-radius: 8px;
+      border: 1px solid #334155;
+      padding: 8px 10px;
+      font-size: 14px;
+    }
+    input {
+      background: #0f172a;
+      color: #f8fafc;
+    }
+    button {
+      background: #2563eb;
+      color: #fff;
+      cursor: pointer;
+    }
+    button:hover { background: #1d4ed8; }
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      font-size: 13px;
+      color: #cbd5e1;
+      margin-bottom: 12px;
+    }
+    .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 999px;
+      display: inline-block;
+      margin-right: 6px;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(10, 1fr);
+      gap: 10px;
+    }
+    .seat {
+      border-radius: 10px;
+      text-align: center;
+      padding: 10px 0 8px;
+      font-weight: 700;
+      font-size: 13px;
+      user-select: none;
+      transition: transform 0.15s ease, opacity 0.15s ease;
+      border: 2px solid transparent;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 46px;
+    }
+    .seat.available {
+      background: #16a34a;
+      cursor: pointer;
+    }
+    .seat.available:hover { transform: translateY(-2px); }
+    .seat.locked {
+      background: #f59e0b;
+      opacity: 0.9;
+      cursor: not-allowed;
+    }
+    .seat.booked {
+      background: #dc2626;
+      cursor: not-allowed;
+    }
+    .seat.mine {
+      border-color: #e2e8f0;
+      box-shadow: 0 0 0 2px rgba(226, 232, 240, 0.2);
+    }
+    .status {
+      margin-top: 14px;
+      min-height: 22px;
+      color: #93c5fd;
+    }
+    .seat-id {
+      line-height: 1;
+    }
+    .seat-timer {
+      margin-top: 4px;
+      font-size: 10px;
+      line-height: 1;
+      letter-spacing: 0.4px;
+      color: rgba(255, 255, 255, 0.92);
+    }
+    .toast {
+      margin-bottom: 12px;
+      padding: 10px 12px;
+      border-radius: 8px;
+      background: rgba(30, 64, 175, 0.3);
+      border: 1px solid rgba(96, 165, 250, 0.4);
+      color: #dbeafe;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="card">
+      <div id="toast" class="toast"></div>
+      <div class="header">
+        <h1>World Tour Seat Selection</h1>
+        <div class="controls">
+          <label for="userId">User</label>
+          <input id="userId" value="user1" />
+          <button onclick="loadSeats()">Refresh</button>
+        </div>
+      </div>
+
+      <div class="legend">
+        <span><span class="dot" style="background:#16a34a"></span>Available</span>
+        <span><span class="dot" style="background:#f59e0b"></span>Locked (5 min)</span>
+        <span><span class="dot" style="background:#dc2626"></span>Booked</span>
+        <span>White border = your locked seat</span>
+      </div>
+
+      <div id="grid" class="grid"></div>
+      <div id="status" class="status"></div>
+    </div>
+  </div>
+
+  <script>
+    const API = "http://localhost:8080/query";
+    const WS = "ws://localhost:8080/query";
+    const HOLD_MS = 5 * 60 * 1000;
+    let seatsById = new Map();
+    const lockStartedAtBySeat = new Map();
+    let socket;
+
+    function getUser() {
+      return document.getElementById("userId").value.trim() || "user1";
+    }
+
+    function setStatus(msg) {
+      document.getElementById("status").innerText = msg;
+    }
+
+    function showToastFromQuery() {
+      const params = new URLSearchParams(window.location.search);
+      const message = params.get("msg");
+      if (!message) return;
+      const toast = document.getElementById("toast");
+      toast.style.display = "block";
+      toast.innerText = decodeURIComponent(message);
+    }
+
+    async function loadSeats() {
+      try {
+        const res = await fetch(API, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            query: `
+              query {
+                seats {
+                  id
+                  status
+                  userId
+                }
+              }
+            `
+          })
+        });
+        const data = await res.json();
+        if (data.errors) {
+          setStatus("Query error: " + data.errors[0].message);
+          return;
+        }
+        const seats = (data.data && data.data.seats) || [];
+        seatsById = new Map(seats.map(seat => [seat.id, seat]));
+        render();
+      } catch (err) {
+        setStatus("Load failed: " + err.message);
+      }
+    }
+
+    function render() {
+      const user = getUser();
+      const grid = document.getElementById("grid");
+      grid.innerHTML = "";
+
+      const seats = Array.from(seatsById.values()).sort((a, b) => a.id - b.id);
+      if (!seats.length) {
+        setStatus("No seats found.");
+        return;
+      }
+
+      seats.forEach((seat) => {
+        const div = document.createElement("div");
+        div.className = "seat " + seat.status;
+        if (seat.status === "locked" && seat.userId === user) {
+          div.classList.add("mine");
+        }
+        const idEl = document.createElement("div");
+        idEl.className = "seat-id";
+        idEl.innerText = seat.id;
+        div.appendChild(idEl);
+
+        if (seat.status === "locked") {
+          const timerEl = document.createElement("div");
+          timerEl.className = "seat-timer";
+          timerEl.innerText = getRemainingText(seat.id);
+          div.appendChild(timerEl);
+        }
+
+        div.title = `${seat.status}${seat.userId ? " (" + seat.userId + ")" : ""}`;
+        div.onclick = () => clickSeat(seat);
+        grid.appendChild(div);
+      });
+    }
+
+    function getRemainingText(seatId) {
+      const startedAt = lockStartedAtBySeat.get(seatId);
+      if (!startedAt) return "05:00";
+      const left = Math.max(0, HOLD_MS - (Date.now() - startedAt));
+      const min = Math.floor(left / 60000);
+      const sec = Math.floor((left % 60000) / 1000);
+      return `${String(min).padStart(2, "0")}:${String(sec).padStart(2, "0")}`;
+    }
+
+    async function clickSeat(seat) {
+      const user = getUser();
+      if (seat.status !== "available") {
+        setStatus("This seat is not available.");
+        return;
+      }
+
+      try {
+        await mutation(`
+          mutation {
+            lockSeat(seatId: ${seat.id}, userId: "${user}")
+          }
+        `);
+
+        const startedAt = Date.now();
+        lockStartedAtBySeat.set(seat.id, startedAt);
+        window.location.href = `checkout.html?seatId=${seat.id}&userId=${encodeURIComponent(user)}&startedAt=${startedAt}`;
+      } catch (err) {
+        setStatus("Lock failed: " + err.message);
+      }
+    }
+
+    async function mutation(query) {
+      const res = await fetch(API, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ query })
+      });
+      const data = await res.json();
+      if (data.errors && data.errors.length) {
+        throw new Error(data.errors[0].message);
+      }
+      return data;
+    }
+
+    function setupSubscription() {
+      socket = new WebSocket(WS, "graphql-transport-ws");
+      socket.onopen = () => {
+        socket.send(JSON.stringify({ type: "connection_init", payload: {} }));
+        socket.send(JSON.stringify({
+          id: "seat-updates",
+          type: "subscribe",
+          payload: { query: `subscription { seatUpdates { id status userId } }` }
+        }));
+      };
+
+      socket.onmessage = (event) => {
+        try {
+          const msg = JSON.parse(event.data);
+          if (msg.type === "next" && msg.id === "seat-updates") {
+            const seat = msg.payload && msg.payload.data ? msg.payload.data.seatUpdates : null;
+            if (!seat) return;
+            if (seat.status === "locked") {
+              if (!lockStartedAtBySeat.has(seat.id)) {
+                lockStartedAtBySeat.set(seat.id, Date.now());
+              }
+            } else {
+              lockStartedAtBySeat.delete(seat.id);
+            }
+            seatsById.set(seat.id, seat);
+            render();
+          }
+        } catch (err) {
+          setStatus("Subscription parse error: " + err.message);
+        }
+      };
+
+      socket.onclose = () => setTimeout(setupSubscription, 1500);
+    }
+
+    showToastFromQuery();
+    setupSubscription();
+    loadSeats();
+    setInterval(render, 1000);
+  </script>
+</body>
+</html>

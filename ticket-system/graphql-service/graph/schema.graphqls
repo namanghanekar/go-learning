@@ -1,0 +1,17 @@
+type Seat {
+  id: Int!
+  status: String!
+  userId: String
+}
+
+type Query {
+  seats: [Seat!]!
+}
+
+type Mutation {
+  lockSeat(seatId: Int!, userId: String!): String
+  confirmSeat(seatId: Int!, userId: String!): String
+}
+type Subscription {
+  seatUpdates: Seat!
+}
