@@ -32,13 +32,11 @@ func (r *Resolver) AddSubscriber() (int, chan *model.Seat) {
 func (r *Resolver) RemoveSubscriber(id int) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-
 	if ch, ok := r.subscribers[id]; ok {
 		delete(r.subscribers, id)
 		close(ch)
 	}
 }
-
 func (r *Resolver) PublishSeatUpdate(seat *model.Seat) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()

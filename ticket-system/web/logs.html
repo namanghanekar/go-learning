@@ -79,14 +79,11 @@
     <div id="status" class="status"></div>
     <div id="logs" class="panel"></div>
   </div>
-
   <script>
     const API = "http://localhost:8080/query";
-
     function setStatus(message) {
       document.getElementById("status").innerText = message;
     }
-
     async function loadLogs() {
       try {
         const res = await fetch(API, {
@@ -94,17 +91,14 @@
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ query: "query { logs }" })
         });
-
         const data = await res.json();
         if (data.errors && data.errors.length) {
           setStatus("Query error: " + data.errors[0].message);
           return;
         }
-
         const logs = (data.data && data.data.logs) || [];
         const div = document.getElementById("logs");
         div.innerHTML = "";
-
         if (!logs.length) {
           const empty = document.createElement("div");
           empty.className = "empty";
@@ -118,13 +112,10 @@
             div.appendChild(p);
           });
         }
-
-        setStatus("Auto refreshing every second");
       } catch (err) {
         setStatus("Load failed: " + err.message);
       }
     }
-
     setInterval(loadLogs, 1000);
     loadLogs();
   </script>

@@ -80,7 +80,6 @@ func findProjectRoot() string {
 		if _, err := os.Stat(filepath.Join(dir, "shared", "logger", "logger.go")); err == nil {
 			return dir
 		}
-
 		parent := filepath.Dir(dir)
 		if parent == dir {
 			return dir
@@ -88,7 +87,6 @@ func findProjectRoot() string {
 		dir = parent
 	}
 }
-
 func splitLines(s string) []string {
 	var lines []string
 	start := 0
