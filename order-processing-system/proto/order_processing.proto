@@ -1,0 +1,30 @@
+syntax = "proto3";
+
+package orders;
+
+option go_package = "order-processing-system/pkg/contracts";
+
+message OrderItem {
+  string sku = 1;
+  int32 quantity = 2;
+}
+
+message CreateOrderRequest {
+  string idempotency_key = 1;
+  string user_id = 2;
+  repeated OrderItem items = 3;
+  int64 amount_cents = 4;
+  string payment_token = 5;
+  string address = 6;
+  string email = 7;
+}
+
+message CreateOrderResponse {
+  string order_id = 1;
+  string status = 2;
+  string message = 3;
+}
+
+service OrderService {
+  rpc CreateOrder(CreateOrderRequest) returns (CreateOrderResponse);
+}

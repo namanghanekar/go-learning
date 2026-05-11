@@ -1,0 +1,134 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: orders
+      POSTGRES_USER: orders
+      POSTGRES_PASSWORD: orders
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./migrations/001_init.sql:/docker-entrypoint-initdb.d/001_init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U orders -d orders"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  redis:
+    image: redis:7-alpine
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  kafka:
+    image: confluentinc/cp-kafka:7.8.0
+    ports:
+      - "9092:9092"
+    environment:
+      CLUSTER_ID: MkU3OEVBNTcwNTJENDM2Qk
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_LISTENERS: PLAINTEXT://kafka:29092,CONTROLLER://kafka:9093,PLAINTEXT_HOST://0.0.0.0:9092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+    healthcheck:
+      test: ["CMD-SHELL", "kafka-topics --bootstrap-server localhost:9092 --list >/dev/null 2>&1"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+
+  kafka-init:
+    image: confluentinc/cp-kafka:7.8.0
+    depends_on:
+      kafka: { condition: service_healthy }
+    command:
+      - /bin/sh
+      - -c
+      - |
+        kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic order.events --partitions 3 --replication-factor 1
+        kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic notification.requests --partitions 3 --replication-factor 1
+
+  inventory-service:
+    build:
+      context: .
+      args: { SERVICE: inventory-service }
+    environment:
+      GRPC_ADDR: :50052
+      REDIS_ADDR: redis:6379
+    depends_on:
+      redis: { condition: service_healthy }
+
+  payment-service:
+    build:
+      context: .
+      args: { SERVICE: payment-service }
+    environment:
+      GRPC_ADDR: :50053
+      REDIS_ADDR: redis:6379
+    depends_on:
+      redis: { condition: service_healthy }
+
+  shipping-service:
+    build:
+      context: .
+      args: { SERVICE: shipping-service }
+    environment:
+      GRPC_ADDR: :50054
+      REDIS_ADDR: redis:6379
+    depends_on:
+      redis: { condition: service_healthy }
+
+  order-service:
+    build:
+      context: .
+      args: { SERVICE: order-service }
+    environment:
+      GRPC_ADDR: :50051
+      POSTGRES_URL: postgres://orders:orders@postgres:5432/orders?sslmode=disable
+      REDIS_ADDR: redis:6379
+      KAFKA_BROKERS: kafka:29092
+      INVENTORY_GRPC_ADDR: inventory-service:50052
+      PAYMENT_GRPC_ADDR: payment-service:50053
+      SHIPPING_GRPC_ADDR: shipping-service:50054
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+      kafka-init: { condition: service_completed_successfully }
+      inventory-service: { condition: service_started }
+      payment-service: { condition: service_started }
+      shipping-service: { condition: service_started }
+
+  notification-service:
+    build:
+      context: .
+      args: { SERVICE: notification-service }
+    environment:
+      REDIS_ADDR: redis:6379
+      KAFKA_BROKERS: kafka:29092
+      NOTIFICATION_WORKERS: 4
+    depends_on:
+      redis: { condition: service_healthy }
+      kafka-init: { condition: service_completed_successfully }
+
+  api-gateway:
+    build:
+      context: .
+      args: { SERVICE: api-gateway }
+    environment:
+      HTTP_ADDR: :8080
+      ORDER_GRPC_ADDR: order-service:50051
+    ports:
+      - "8080:8080"
+    depends_on:
+      order-service: { condition: service_started }
