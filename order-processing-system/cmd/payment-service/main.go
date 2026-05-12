@@ -2,9 +2,11 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"log/slog"
 	"net"
+	"strings"
 
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
@@ -24,23 +26,49 @@ type server struct {
 	log   *slog.Logger
 }
 
+func outcomeDenied(outcome string) bool {
+	return strings.EqualFold(strings.TrimSpace(outcome), "denied")
+}
+
+func outcomeSuccess(outcome string) bool {
+	return strings.EqualFold(strings.TrimSpace(outcome), "success")
+}
+
 func (s *server) ProcessPayment(ctx context.Context, req *contracts.ProcessPaymentRequest) (*contracts.ProcessPaymentResponse, error) {
 	if req.AmountCents <= 0 {
 		return nil, errors.New("amount must be positive")
 	}
-	if req.PaymentToken == "" || req.PaymentToken == "fail" {
-		return nil, errors.New("payment declined")
+	if req.ItemCount < 0 {
+		return nil, errors.New("item_count must be zero or positive")
+	}
+	if outcomeDenied(req.PaymentOutcome) {
+		return nil, errors.New("payment declined (payment_outcome=denied)")
+	}
+	token := strings.TrimSpace(req.PaymentToken)
+	if !outcomeSuccess(req.PaymentOutcome) {
+		if token == "" || strings.EqualFold(token, "fail") {
+			return nil, errors.New("payment declined")
+		}
 	}
 	key := "payment:order:" + req.OrderID
 	if existing, err := s.redis.Get(ctx, key).Result(); err == nil && existing != "" {
-		return &contracts.ProcessPaymentResponse{PaymentID: existing}, nil
+		return &contracts.ProcessPaymentResponse{PaymentID: existing, PaymentStatus: "SUCCESS"}, nil
 	}
 	paymentID := "pay_" + uuid.NewString()
+	meta, _ := json.Marshal(map[string]any{
+		"order_id":        req.OrderID,
+		"amount_cents":    req.AmountCents,
+		"address":         req.Address,
+		"recipient_name":  req.RecipientName,
+		"item_count":      req.ItemCount,
+		"payment_outcome": req.PaymentOutcome,
+	})
+	_ = s.redis.Set(ctx, "payment:meta:"+paymentID, string(meta), 0).Err()
 	if err := s.redis.Set(ctx, key, paymentID, 0).Err(); err != nil {
 		return nil, err
 	}
-	s.log.Info("payment processed", "order_id", req.OrderID, "payment_id", paymentID)
-	return &contracts.ProcessPaymentResponse{PaymentID: paymentID}, nil
+	s.log.Info("payment processed", "order_id", req.OrderID, "payment_id", paymentID, "amount_cents", req.AmountCents, "item_count", req.ItemCount, "recipient", req.RecipientName)
+	return &contracts.ProcessPaymentResponse{PaymentID: paymentID, PaymentStatus: "SUCCESS"}, nil
 }
 
 func (s *server) RefundPayment(ctx context.Context, req *contracts.RefundPaymentRequest) (*contracts.RefundPaymentResponse, error) {

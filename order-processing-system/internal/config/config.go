@@ -9,7 +9,6 @@ import (
 
 type Config struct {
 	ServiceName  string
-	HTTPAddr     string
 	GRPCAddr     string
 	PostgresURL  string
 	RedisAddr    string
@@ -19,7 +18,6 @@ type Config struct {
 func Load(service string, defaultGRPC string) Config {
 	return Config{
 		ServiceName:  service,
-		HTTPAddr:     env("HTTP_ADDR", ":8080"),
 		GRPCAddr:     env("GRPC_ADDR", defaultGRPC),
 		PostgresURL:  env("POSTGRES_URL", "postgres://orders:orders@localhost:5432/orders?sslmode=disable"),
 		RedisAddr:    env("REDIS_ADDR", "localhost:6379"),

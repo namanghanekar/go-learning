@@ -5,6 +5,7 @@ import (
 	"errors"
 	"log/slog"
 	"net"
+	"strconv"
 	"time"
 
 	"github.com/google/uuid"
@@ -25,30 +26,50 @@ type server struct {
 	log   *slog.Logger
 }
 
+type inventoryDecrement struct {
+	key string
+	qty int64
+}
+
 func (s *server) ReserveInventory(ctx context.Context, req *contracts.ReserveInventoryRequest) (*contracts.ReserveInventoryResponse, error) {
 	reservationID := "res_" + uuid.NewString()
-	tx := s.redis.TxPipeline()
+	var rolledBack []inventoryDecrement
 	for _, item := range req.Items {
 		if item.Quantity <= 0 {
+			s.rollbackDecrements(ctx, rolledBack)
 			return nil, errors.New("quantity must be positive")
 		}
 		key := "inventory:" + item.SKU
-		remaining, err := s.redis.DecrBy(ctx, key, int64(item.Quantity)).Result()
+		qty := int64(item.Quantity)
+		remaining, err := s.redis.DecrBy(ctx, key, qty).Result()
 		if err != nil {
+			s.rollbackDecrements(ctx, rolledBack)
 			return nil, err
 		}
 		if remaining < 0 {
-			_, _ = s.redis.IncrBy(ctx, key, int64(item.Quantity)).Result()
+			_, _ = s.redis.IncrBy(ctx, key, qty).Result()
+			s.rollbackDecrements(ctx, rolledBack)
 			return nil, errors.New("insufficient inventory for sku " + item.SKU)
 		}
+		rolledBack = append(rolledBack, inventoryDecrement{key: key, qty: qty})
+	}
+	tx := s.redis.TxPipeline()
+	for _, item := range req.Items {
 		tx.HSet(ctx, "reservation:"+reservationID, item.SKU, item.Quantity)
 	}
 	tx.Expire(ctx, "reservation:"+reservationID, 24*time.Hour)
 	if _, err := tx.Exec(ctx); err != nil {
+		s.rollbackDecrements(ctx, rolledBack)
 		return nil, err
 	}
 	s.log.Info("inventory reserved", "order_id", req.OrderID, "reservation_id", reservationID)
 	return &contracts.ReserveInventoryResponse{ReservationID: reservationID}, nil
+}
+
+func (s *server) rollbackDecrements(ctx context.Context, ops []inventoryDecrement) {
+	for i := len(ops) - 1; i >= 0; i-- {
+		_, _ = s.redis.IncrBy(ctx, ops[i].key, ops[i].qty).Result()
+	}
 }
 
 func (s *server) ReleaseInventory(ctx context.Context, req *contracts.ReleaseInventoryRequest) (*contracts.ReleaseInventoryResponse, error) {
@@ -57,21 +78,15 @@ func (s *server) ReleaseInventory(ctx context.Context, req *contracts.ReleaseInv
 		return nil, err
 	}
 	for sku, qty := range values {
-		_, _ = s.redis.IncrBy(ctx, "inventory:"+sku, parseInt(qty)).Result()
+		n, err := strconv.ParseInt(qty, 10, 64)
+		if err != nil {
+			continue
+		}
+		_, _ = s.redis.IncrBy(ctx, "inventory:"+sku, n).Result()
 	}
 	_ = s.redis.Del(ctx, "reservation:"+req.ReservationID).Err()
 	s.log.Info("inventory released", "reservation_id", req.ReservationID)
 	return &contracts.ReleaseInventoryResponse{Released: true}, nil
-}
-
-func parseInt(v string) int64 {
-	var n int64
-	for _, r := range v {
-		if r >= '0' && r <= '9' {
-			n = n*10 + int64(r-'0')
-		}
-	}
-	return n
 }
 
 func main() {

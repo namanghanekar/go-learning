@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package orders;
 
-option go_package = "order-processing-system/pkg/contracts";
+option go_package = "order-processing-system/gen/orderspb;orderspb";
 
 message OrderItem {
   string sku = 1;
@@ -14,17 +14,51 @@ message CreateOrderRequest {
   string user_id = 2;
   repeated OrderItem items = 3;
   int64 amount_cents = 4;
-  string payment_token = 5;
-  string address = 6;
-  string email = 7;
+  string email = 5;
 }
 
 message CreateOrderResponse {
   string order_id = 1;
+  string user_id = 2;
+  string status = 3;
+  string message = 4;
+}
+
+message GetCartRequest {
+  string user_id = 1;
+}
+
+message GetCartResponse {
+  string order_id = 1;
+  string user_id = 2;
+  string status = 3;
+  repeated OrderItem items = 4;
+  int64 amount_cents = 5;
+  string email = 6;
+  string message = 7;
+}
+
+message CheckoutRequest {
+  string idempotency_key = 1;
+  string user_id = 2;
+  string payment_token = 3;
+  string address = 4;
+  string recipient_name = 5;
+  string payment_outcome = 6;
+}
+
+message CheckoutResponse {
+  string order_id = 1;
   string status = 2;
   string message = 3;
+  string payment_id = 4;
+  string payment_status = 5;
+  string shipment_id = 6;
+  bool refund_issued = 7;
 }
 
 service OrderService {
   rpc CreateOrder(CreateOrderRequest) returns (CreateOrderResponse);
+  rpc GetCart(GetCartRequest) returns (GetCartResponse);
+  rpc Checkout(CheckoutRequest) returns (CheckoutResponse);
 }

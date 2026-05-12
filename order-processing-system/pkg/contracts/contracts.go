@@ -45,14 +45,18 @@ type CheckoutRequest struct {
 	UserID         string `json:"user_id"`
 	PaymentToken   string `json:"payment_token"`
 	Address        string `json:"address"`
+	RecipientName  string `json:"recipient_name"`
+	PaymentOutcome string `json:"payment_outcome"`
 }
 
 type CheckoutResponse struct {
-	OrderID    string `json:"order_id"`
-	Status     string `json:"status"`
-	Message    string `json:"message"`
-	PaymentID  string `json:"payment_id,omitempty"`
-	ShipmentID string `json:"shipment_id,omitempty"`
+	OrderID       string `json:"order_id"`
+	Status        string `json:"status"`
+	Message       string `json:"message"`
+	PaymentID     string `json:"payment_id,omitempty"`
+	PaymentStatus string `json:"payment_status,omitempty"`
+	ShipmentID    string `json:"shipment_id,omitempty"`
+	RefundIssued  bool   `json:"refund_issued,omitempty"`
 }
 
 type ReserveInventoryRequest struct {
@@ -73,13 +77,18 @@ type ReleaseInventoryResponse struct {
 }
 
 type ProcessPaymentRequest struct {
-	OrderID      string `json:"order_id"`
-	AmountCents  int64  `json:"amount_cents"`
-	PaymentToken string `json:"payment_token"`
+	OrderID        string `json:"order_id"`
+	AmountCents    int64  `json:"amount_cents"`
+	PaymentToken   string `json:"payment_token"`
+	Address        string `json:"address"`
+	RecipientName  string `json:"recipient_name"`
+	ItemCount      int32  `json:"item_count"`
+	PaymentOutcome string `json:"payment_outcome"`
 }
 
 type ProcessPaymentResponse struct {
-	PaymentID string `json:"payment_id"`
+	PaymentID     string `json:"payment_id"`
+	PaymentStatus string `json:"payment_status"`
 }
 
 type RefundPaymentRequest struct {

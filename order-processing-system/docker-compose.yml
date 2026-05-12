@@ -8,7 +8,9 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - ./migrations/001_init.sql:/docker-entrypoint-initdb.d/001_init.sql:ro
+      - ./migrations/001_init.sql:/docker-entrypoint-initdb.d/01_init.sql:ro
+      - ./migrations/002_checkout_fields.sql:/docker-entrypoint-initdb.d/02_checkout_fields.sql:ro
+      - ./migrations/003_notifications.sql:/docker-entrypoint-initdb.d/03_notifications.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U orders -d orders"]
       interval: 5s
@@ -93,8 +95,12 @@ services:
     build:
       context: .
       args: { SERVICE: order-service }
+    ports:
+      - "50051:50051"
+      - "50061:50061"
     environment:
       GRPC_ADDR: :50051
+      ORDER_JSON_GRPC_ADDR: :50061
       POSTGRES_URL: postgres://orders:orders@postgres:5432/orders?sslmode=disable
       REDIS_ADDR: redis:6379
       KAFKA_BROKERS: kafka:29092
@@ -116,19 +122,9 @@ services:
     environment:
       REDIS_ADDR: redis:6379
       KAFKA_BROKERS: kafka:29092
+      POSTGRES_URL: postgres://orders:orders@postgres:5432/orders?sslmode=disable
       NOTIFICATION_WORKERS: 4
     depends_on:
       redis: { condition: service_healthy }
+      postgres: { condition: service_healthy }
       kafka-init: { condition: service_completed_successfully }
-
-  api-gateway:
-    build:
-      context: .
-      args: { SERVICE: api-gateway }
-    environment:
-      HTTP_ADDR: :8080
-      ORDER_GRPC_ADDR: order-service:50051
-    ports:
-      - "8080:8080"
-    depends_on:
-      order-service: { condition: service_started }

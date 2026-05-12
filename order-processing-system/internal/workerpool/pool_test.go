@@ -5,7 +5,6 @@ import (
 	"log/slog"
 	"sync/atomic"
 	"testing"
-	"time"
 )
 
 func TestPoolProcessesJobs(t *testing.T) {
@@ -26,5 +25,4 @@ func TestPoolProcessesJobs(t *testing.T) {
 	if atomic.LoadInt32(&count) != 4 {
 		t.Fatalf("expected 4 processed jobs, got %d", count)
 	}
-	_ = time.Second
 }

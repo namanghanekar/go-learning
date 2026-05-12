@@ -44,8 +44,6 @@ func (p *Pool) Start(ctx context.Context, workers int) {
 					}
 					if err := job.Handle(ctx); err != nil {
 						p.log.Error("job failed", "worker_id", workerID, "job_id", job.ID, "error", err)
-					} else {
-						p.log.Info("job completed", "worker_id", workerID, "job_id", job.ID)
 					}
 				}
 			}

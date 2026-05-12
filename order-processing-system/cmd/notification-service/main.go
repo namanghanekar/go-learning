@@ -5,13 +5,17 @@ import (
 	"encoding/json"
 	"errors"
 	"log/slog"
+	"os"
+	"strings"
 	"time"
 
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
 
 	"order-processing-system/internal/config"
 	"order-processing-system/internal/kafkax"
 	"order-processing-system/internal/logx"
+	"order-processing-system/internal/postgres"
 	"order-processing-system/internal/redisx"
 	"order-processing-system/internal/retry"
 	"order-processing-system/internal/shutdown"
@@ -20,6 +24,7 @@ import (
 
 type notifier struct {
 	redis *redis.Client
+	db    *pgxpool.Pool
 	log   *slog.Logger
 }
 
@@ -34,13 +39,14 @@ func (n notifier) handle(ctx context.Context, event kafkax.Event) error {
 		return nil
 	}
 	return retry.Do(ctx, 3, 200*time.Millisecond, func(ctx context.Context) error {
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		case <-time.After(100 * time.Millisecond):
-			n.log.Info("notification sent", "event_id", event.ID, "order_id", event.OrderID, "type", event.Type)
-			return n.redis.Set(ctx, key, "completed", 24*time.Hour).Err()
+		if n.db != nil {
+			if _, err := n.db.Exec(ctx, `insert into notifications(order_id, event_id, event_type, payload) values($1,$2,$3,$4) on conflict (event_id) do nothing`,
+				event.OrderID, event.ID, event.Type, event.Payload); err != nil {
+				return err
+			}
 		}
+		n.log.Info("notification sent", "event_id", event.ID, "order_id", event.OrderID, "type", event.Type)
+		return n.redis.Set(ctx, key, "completed", 24*time.Hour).Err()
 	})
 }
 
@@ -53,13 +59,23 @@ func main() {
 		log.Error("redis connection failed", "error", err)
 		return
 	}
+	var db *pgxpool.Pool
+	if pgURL := strings.TrimSpace(os.Getenv("POSTGRES_URL")); pgURL != "" {
+		db, err = postgres.Connect(ctx, pgURL)
+		if err != nil {
+			log.Error("postgres connection failed", "error", err)
+			return
+		}
+		defer db.Close()
+		log.Info("notification delivery persistence enabled")
+	}
 	reader := kafkax.NewReader(cfg.KafkaBrokers, "notification-service", kafkax.TopicNotificationRequests)
 	defer reader.Close()
 	workers := config.Int("NOTIFICATION_WORKERS", 4)
 	pool := workerpool.New(workers, 100, log)
 	pool.Start(ctx, workers)
 	defer pool.Shutdown()
-	n := notifier{redis: rdb, log: log}
+	n := notifier{redis: rdb, db: db, log: log}
 	log.Info("notification consumer started", "workers", workers)
 	for {
 		msg, err := reader.FetchMessage(ctx)
