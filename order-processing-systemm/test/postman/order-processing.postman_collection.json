@@ -1,0 +1,148 @@
+{
+  "info": {
+    "name": "Order Processing System",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+
+  "item": [
+
+    {
+      "name": "Create Order",
+
+      "request": {
+
+        "method": "POST",
+
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+
+        "body": {
+          "mode": "raw",
+
+          "raw": "{\n  \"user_id\": 1,\n  \"product_id\": 101,\n  \"quantity\": 2,\n  \"amount\": 500\n}"
+        },
+
+        "url": {
+          "raw": "http://localhost:8000/orders",
+
+          "protocol": "http",
+
+          "host": [
+            "localhost"
+          ],
+
+          "port": "8000",
+
+          "path": [
+            "orders"
+          ]
+        }
+      }
+    },
+
+    {
+      "name": "Order Service Health",
+
+      "request": {
+
+        "method": "GET",
+
+        "url": {
+          "raw": "http://localhost:8080/health",
+
+          "protocol": "http",
+
+          "host": [
+            "localhost"
+          ],
+
+          "port": "8080",
+
+          "path": [
+            "health"
+          ]
+        }
+      }
+    },
+
+    {
+      "name": "Payment Service Health",
+
+      "request": {
+
+        "method": "GET",
+
+        "url": {
+          "raw": "http://localhost:8082/health",
+
+          "protocol": "http",
+
+          "host": [
+            "localhost"
+          ],
+
+          "port": "8082",
+
+          "path": [
+            "health"
+          ]
+        }
+      }
+    },
+
+    {
+      "name": "Shipment Service Health",
+
+      "request": {
+
+        "method": "GET",
+
+        "url": {
+          "raw": "http://localhost:8083/health",
+
+          "protocol": "http",
+
+          "host": [
+            "localhost"
+          ],
+
+          "port": "8083",
+
+          "path": [
+            "health"
+          ]
+        }
+      }
+    },
+
+    {
+      "name": "Notification Service Health",
+
+      "request": {
+
+        "method": "GET",
+
+        "url": {
+          "raw": "http://localhost:8084/health",
+
+          "protocol": "http",
+
+          "host": [
+            "localhost"
+          ],
+
+          "port": "8084",
+
+          "path": [
+            "health"
+          ]
+        }
+      }
+    }
+
+  ]
+}

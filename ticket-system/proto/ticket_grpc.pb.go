@@ -8,6 +8,7 @@ package proto
 
 import (
 	context "context"
+
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
@@ -277,7 +278,7 @@ var InventoryService_ServiceDesc = grpc.ServiceDesc{
 			ServerStreams: true,
 		},
 	},
-	Metadata: "proto/ticket.proto",
+	Metadata: "order-processing-system/proto/ticket.proto",
 }
 
 const (
@@ -421,5 +422,5 @@ var PaymentService_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "proto/ticket.proto",
+	Metadata: "order-processing-system/proto/ticket.proto",
 }
