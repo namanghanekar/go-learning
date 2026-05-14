@@ -2,13 +2,15 @@ package consumer
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 
+	"order-processing-system/notification-service/internal/client"
 	"order-processing-system/notification-service/internal/service"
 )
 
-type OrderCreatedEvent struct {
-	ID int `json:"id"`
+type PaymentEvent struct {
+	OrderID int `json:"OrderID"`
 }
 
 type NotificationConsumer struct {
@@ -28,16 +30,39 @@ func (c *NotificationConsumer) HandleMessage(
 	data []byte,
 ) {
 
-	var event OrderCreatedEvent
+	fmt.Println("NOTIFICATION EVENT RECEIVED")
+	fmt.Println(string(data))
 
-	err := json.Unmarshal(data, &event)
+	var event PaymentEvent
+
+	err := json.Unmarshal(
+		data,
+		&event,
+	)
 
 	if err != nil {
 		log.Println(err)
 		return
 	}
 
-	c.Service.SendNotification(event.ID)
+	err = c.Service.SendNotification(
+		event.OrderID,
+		"Order Completed Successfully",
+	)
+
+	if err != nil {
+		log.Println(err)
+		return
+	}
 
 	log.Println("Notification sent")
+
+	orderClient := client.NewOrderClient()
+
+	orderClient.UpdateStatus(
+		event.OrderID,
+		"COMPLETED",
+	)
+
+	fmt.Println("Order status updated to COMPLETED")
 }

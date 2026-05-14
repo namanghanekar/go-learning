@@ -26,8 +26,8 @@ func NewOrderServer(
 
 func (s *OrderServer) CreateOrder(
 	ctx context.Context,
-	req *pb.OrderRequest,
-) (*pb.OrderResponse, error) {
+	req *pb.CreateOrderRequest,
+) (*pb.CreateOrderResponse, error) {
 
 	orderReq := dto.CreateOrderRequest{
 		UserID:    int(req.UserId),
@@ -44,7 +44,25 @@ func (s *OrderServer) CreateOrder(
 		return nil, err
 	}
 
-	return &pb.OrderResponse{
+	return &pb.CreateOrderResponse{
 		Message: "Order created successfully",
+	}, nil
+}
+func (s *OrderServer) UpdateOrderStatus(
+	ctx context.Context,
+	req *pb.UpdateOrderStatusRequest,
+) (*pb.UpdateOrderStatusResponse, error) {
+
+	err := s.Service.UpdateOrderStatus(
+		int(req.OrderId),
+		req.Status,
+	)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &pb.UpdateOrderStatusResponse{
+		Success: true,
 	}, nil
 }

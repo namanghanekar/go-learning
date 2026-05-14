@@ -32,7 +32,16 @@ func NewOrderService(
 		Producer:        producer,
 	}
 }
+func (s *OrderService) UpdateOrderStatus(
+	orderID int,
+	status string,
+) error {
 
+	return s.Repo.UpdateOrderStatus(
+		orderID,
+		status,
+	)
+}
 func (s *OrderService) CreateOrder(
 	req dto.CreateOrderRequest,
 ) (*model.Order, error) {
@@ -54,28 +63,14 @@ func (s *OrderService) CreateOrder(
 
 	fmt.Println("Inventory available")
 
-	fmt.Println("Processing payment")
-
-	success, err := s.PaymentClient.ProcessPayment(
-		req.Amount,
-	)
-
-	if err != nil {
-		return nil, err
-	}
-
-	if !success {
-		return nil, errors.New("payment failed")
-	}
-
-	fmt.Println("Payment successful")
-
 	order := &model.Order{
 		UserID:    req.UserID,
 		ProductID: req.ProductID,
 		Quantity:  req.Quantity,
 		Amount:    req.Amount,
-		Status:    "CONFIRMED",
+
+		// IMPORTANT
+		Status: "PENDING_PAYMENT",
 	}
 
 	fmt.Println("Saving order")
@@ -88,9 +83,16 @@ func (s *OrderService) CreateOrder(
 
 	fmt.Println("Order saved")
 
+	return order, nil
+
 	err = s.Producer.Publish(order)
 
 	if err != nil {
+
+		order.Status = "FAILED"
+
+		s.Repo.UpdateOrder(order)
+
 		return nil, err
 	}
 

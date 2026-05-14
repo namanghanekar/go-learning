@@ -5,19 +5,24 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"order-processing-system/shipment-service/internal/client"
+	"order-processing-system/shipment-service/internal/service"
+
 	"github.com/segmentio/kafka-go"
 )
 
-type Order struct {
-	ID int `json:"id"`
+type PaymentEvent struct {
+	OrderID int `json:"OrderID"`
 }
 
-func StartConsumer() {
+func StartConsumer(
+	shipmentService *service.ShipmentService,
+) {
 
 	reader := kafka.NewReader(
 		kafka.ReaderConfig{
 			Brokers: []string{"localhost:9092"},
-			Topic:   "order.created",
+			Topic:   "payment.success",
 			GroupID: "shipment-group",
 		},
 	)
@@ -35,11 +40,14 @@ func StartConsumer() {
 			continue
 		}
 
-		var order Order
+		fmt.Println("SHIPMENT EVENT RECEIVED")
+		fmt.Println(string(msg.Value))
+
+		var event PaymentEvent
 
 		err = json.Unmarshal(
 			msg.Value,
-			&order,
+			&event,
 		)
 
 		if err != nil {
@@ -48,12 +56,28 @@ func StartConsumer() {
 		}
 
 		fmt.Println(
-			"Order event received",
-			order.ID,
+			"Creating shipment for order:",
+			event.OrderID,
 		)
 
-		fmt.Println(
-			"Shipment created",
+		err = shipmentService.CreateShipment(
+			event.OrderID,
 		)
+
+		if err != nil {
+			fmt.Println(err)
+			continue
+		}
+
+		fmt.Println("Shipment created")
+
+		orderClient := client.NewOrderClient()
+
+		orderClient.UpdateStatus(
+			event.OrderID,
+			"SHIPPED",
+		)
+
+		fmt.Println("Order status updated to SHIPPED")
 	}
 }

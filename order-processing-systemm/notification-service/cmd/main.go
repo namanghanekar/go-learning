@@ -1,57 +1,79 @@
 package main
 
 import (
+	"context"
 	"fmt"
+	"log"
 
 	"order-processing-system/notification-service/internal/consumer"
-	"order-processing-system/notification-service/internal/email"
-	"order-processing-system/notification-service/internal/kafka"
+	"order-processing-system/notification-service/internal/model"
+	"order-processing-system/notification-service/internal/repository"
 	"order-processing-system/notification-service/internal/service"
-	"order-processing-system/notification-service/internal/sms"
 
-	"github.com/gin-gonic/gin"
+	"order-processing-system/shared/postgres"
+
+	"github.com/segmentio/kafka-go"
 )
 
 func main() {
 
-	emailSender := email.NewEmailSender()
+	db := postgres.ConnectDB()
 
-	smsSender := sms.NewSMSSender()
+	fmt.Println(
+		"PostgreSQL connected",
+	)
+
+	err := db.AutoMigrate(
+		&model.Notification{},
+	)
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	notificationRepo := repository.NewNotificationRepository(
+		db,
+	)
 
 	notificationService := service.NewNotificationService(
-		emailSender,
-		smsSender,
+		notificationRepo,
 	)
 
 	notificationConsumer := consumer.NewNotificationConsumer(
 		notificationService,
 	)
 
-	kafkaConsumer := kafka.NewKafkaConsumer(
-		"localhost:9092",
-		"order.created",
-		"notification-group",
-	)
-
-	go kafkaConsumer.Consume(
-		notificationConsumer.HandleMessage,
-	)
-
-	router := gin.Default()
-
-	router.GET(
-		"/health",
-		func(c *gin.Context) {
-
-			c.JSON(200, gin.H{
-				"message": "Notification Service Running",
-			})
+	reader := kafka.NewReader(
+		kafka.ReaderConfig{
+			Brokers: []string{"localhost:9092"},
+			Topic:   "payment.success",
+			GroupID: "notification-group",
 		},
 	)
 
+	defer reader.Close()
+
 	fmt.Println(
-		"Notification Service Running On Port 8084",
+		"Notification Service Running",
 	)
 
-	router.Run(":8084")
+	for {
+
+		msg, err := reader.ReadMessage(
+			context.Background(),
+		)
+
+		if err != nil {
+			fmt.Println(err)
+			continue
+		}
+
+		fmt.Println(
+			"Notification event received",
+		)
+
+		notificationConsumer.HandleMessage(
+			msg.Value,
+		)
+	}
 }

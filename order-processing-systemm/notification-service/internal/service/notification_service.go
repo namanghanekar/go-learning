@@ -3,42 +3,39 @@ package service
 import (
 	"fmt"
 
-	"order-processing-system/notification-service/internal/email"
-	"order-processing-system/notification-service/internal/sms"
+	"order-processing-system/notification-service/internal/model"
+	"order-processing-system/notification-service/internal/repository"
 )
 
 type NotificationService struct {
-	EmailSender *email.EmailSender
-	SMSSender   *sms.SMSSender
+	Repo *repository.NotificationRepository
 }
 
 func NewNotificationService(
-	emailSender *email.EmailSender,
-	smsSender *sms.SMSSender,
+	repo *repository.NotificationRepository,
 ) *NotificationService {
 
 	return &NotificationService{
-		EmailSender: emailSender,
-		SMSSender:   smsSender,
+		Repo: repo,
 	}
 }
 
 func (s *NotificationService) SendNotification(
-	orderID int,
-) {
+	userID int,
+	message string,
+) error {
 
-	message := fmt.Sprintf(
-		"Your order %d has been confirmed",
-		orderID,
+	fmt.Println(
+		"Notification sent",
 	)
 
-	s.EmailSender.SendEmail(
-		"user@gmail.com",
-		message,
-	)
+	notification := &model.Notification{
+		UserID:  userID,
+		Message: message,
+		Type:    "ORDER",
+	}
 
-	s.SMSSender.SendSMS(
-		"9999999999",
-		message,
+	return s.Repo.Create(
+		notification,
 	)
 }

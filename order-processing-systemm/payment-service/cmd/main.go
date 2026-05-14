@@ -7,6 +7,8 @@ import (
 
 	grpcHandler "order-processing-system/payment-service/internal/grpc"
 
+	"order-processing-system/payment-service/internal/client"
+	"order-processing-system/payment-service/internal/kafka"
 	"order-processing-system/payment-service/internal/model"
 	"order-processing-system/payment-service/internal/repository"
 	"order-processing-system/payment-service/internal/service"
@@ -26,8 +28,14 @@ func main() {
 
 	paymentRepo := repository.NewPaymentRepository(db)
 
+	orderClient := client.NewOrderClient()
+
+	producer := kafka.NewProducer()
+
 	paymentService := service.NewPaymentService(
 		paymentRepo,
+		orderClient,
+		producer,
 	)
 
 	server := grpcHandler.NewPaymentServer(

@@ -6,18 +6,31 @@ option go_package = "./generated";
 
 service OrderService {
 
-  rpc CreateOrder(OrderRequest)
-  returns (OrderResponse);
+  rpc CreateOrder(
+    CreateOrderRequest
+  ) returns (CreateOrderResponse);
 
+  rpc UpdateOrderStatus(
+    UpdateOrderStatusRequest
+  ) returns (UpdateOrderStatusResponse);
 }
 
-message OrderRequest {
+message CreateOrderRequest {
   int32 user_id = 1;
   int32 product_id = 2;
   int32 quantity = 3;
   double amount = 4;
 }
 
-message OrderResponse {
+message CreateOrderResponse {
   string message = 1;
+}
+
+message UpdateOrderStatusRequest {
+  int32 order_id = 1;
+  string status = 2;
+}
+
+message UpdateOrderStatusResponse {
+  bool success = 1;
 }
